@@ -396,7 +396,7 @@ class Monster:
         self.update_counter = 0
         
     def update(self, player, walls):
-        """Actualiza el monstruo (optimizado)"""
+        """Actualiza el monstruo (CORREGIDO)"""
         # Solo actualizar cada 2 frames para optimizar
         self.update_counter += 1
         if self.update_counter % 2 != 0:
@@ -405,12 +405,23 @@ class Monster:
         # Seguir al jugador si está cerca
         dx = player.x - self.x
         dy = player.y - self.y
-        distance = math.sqrt(dx*dx + dy*dy)
+        distance_squared = dx*dx + dy*dy
         
-        if distance < self.detection_range and distance > 0:
-            # Perseguir al jugador
-            self.x += (dx / distance) * self.speed
-            self.y += (dy / distance) * self.speed
+        if distance_squared < self.detection_range * self.detection_range:
+            distance = math.sqrt(distance_squared)
+            if distance > 0:  # CORRECCIÓN: Verificar que distance no sea 0
+                # Perseguir al jugador
+                self.x += (dx / distance) * self.speed
+                self.y += (dy / distance) * self.speed
+                
+                # Verificar colisiones con paredes después de mover
+                monster_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+                for wall in walls:
+                    if monster_rect.colliderect(wall):
+                        # Si hay colisión, revertir el movimiento
+                        self.x -= (dx / distance) * self.speed
+                        self.y -= (dy / distance) * self.speed
+                        break
         else:
             # Movimiento aleatorio menos frecuente
             self.move_timer -= 1
@@ -420,21 +431,24 @@ class Monster:
                 self.move_timer = random.randint(90, 180)
                 
             # Moverse hacia el objetivo
-            dx = self.target_x - self.x
-            dy = self.target_y - self.y
-            dist = math.sqrt(dx*dx + dy*dy)
-            if dist > 5:
-                self.x += (dx / dist) * self.speed * 0.3
-                self.y += (dy / dist) * self.speed * 0.3
-                
-        # Verificar colisiones con paredes (solo si se mueve)
-        if dx != 0 or dy != 0:
-            monster_rect = pygame.Rect(self.x, self.y, self.width, self.height)
-            for wall in walls:
-                if monster_rect.colliderect(wall):
-                    self.x -= (dx / dist) * self.speed
-                    self.y -= (dy / dist) * self.speed
-                    break
+            dx_target = self.target_x - self.x
+            dy_target = self.target_y - self.y
+            dist_target_squared = dx_target*dx_target + dy_target*dy_target
+            
+            if dist_target_squared > 25:  # CORRECCIÓN: Usar distancia al cuadrado para comparar
+                dist_target = math.sqrt(dist_target_squared)
+                if dist_target > 0:  # CORRECCIÓN: Verificar que dist_target no sea 0
+                    self.x += (dx_target / dist_target) * self.speed * 0.3
+                    self.y += (dy_target / dist_target) * self.speed * 0.3
+                    
+                    # Verificar colisiones con paredes
+                    monster_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+                    for wall in walls:
+                        if monster_rect.colliderect(wall):
+                            # Si hay colisión, revertir el movimiento
+                            self.x -= (dx_target / dist_target) * self.speed * 0.3
+                            self.y -= (dy_target / dist_target) * self.speed * 0.3
+                            break
                 
         if self.attack_cooldown > 0:
             self.attack_cooldown -= 1
